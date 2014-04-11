@@ -25,28 +25,28 @@
 #include "crowding.h"
 #include "Visualisation.h"
 
-#include <vtkFloatArray.h>
-
+#include <random>
 
 int main(int argc, char **argv) {
 	auto A = SpeciesType::New();
+	auto params = ptr<Params>(new Params());
 
 
 	const int timesteps = 20000;
 	const int nout = 100;
 	const int timesteps_per_out = timesteps/nout;
-	const double L = 0.004;
-	const int nx = 10;
-
-
+	const double L = 1.0;
+	const int n = 10;
 
 	/*
 
 	/*
 	 * parameters
 	 */
-
-
+	params->D = 1.0;
+	params->diameter = 0.01;
+	params->dt = 0.0001;
+	params->time = 0;
 
 	const Vect3d min(0,0,0);
 	const Vect3d max(L,L,L);
@@ -55,71 +55,37 @@ int main(int argc, char **argv) {
 	/*
 	 * create particles
 	 */
-	dem->create_particles(min,max,dem_n,[](DemType::Value& i) {
-		REGISTER_DEM_PARTICLE(i);
+	std::mt19937 generator;
+	std::uniform_real_distribution distribution(0,L);
+	auto dice = std::bind ( distribution, generator );
+	A->create_particles(n,[A,&dice](SpeciesType::Value& i) {
+		REGISTER_SPECIES_PARTICLE(i);
 		v << 0,0,0;
-		v0 << 0,0,0;
-		f << 0,0,0;
-		f0 << 0,0,0;
+		Vect3d canditate_position;
+		bool regenerate;
+		do {
+			regenerate = false;
+			canditate_position << dice(),dice(),dice();
+			for (auto tpl: A->get_neighbours(canditate_position)) {
+				REGISTER_NEIGHBOUR_SPECIES_PARTICLE(tpl);
+				if (alivej) {
+					regenerate = true;
+					break;
+				}
+			}
+		} while (regenerate);
+		return canditate_position;
 	});
 
-	sph->create_particles_grid(min_domain,max,sph_n+Vect3i(0,0,3),[psep,params](SphType::Value& i) {
-		REGISTER_SPH_PARTICLE(i);
-		h = params->sph_maxh;
-		omega = 1.0;
-		kappa = 0.0;
-		v << 0,0,0;
-		v0 << 0,0,0;
-		dddt = 0;
-		f0 << 0,0,0;
-		e = 1;
-		rho = params->sph_dens;
-		f << 0,0,0;
-		fdrag << 0,0,0;
-		f0 << 0,0,0;
-		if (r[2]<0) {
-			fixed = true;
-		} else {
-			fixed = false;
-		}
-	});
 
 	/*
 	 * setup output stuff
 	 */
-	auto sph_grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
-	auto dem_grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
-	sph->copy_to_vtk_grid(sph_grid);
-	dem->copy_to_vtk_grid(dem_grid);
-	Visualisation::vtkWriteGrid("vis/at_start_sph",0,sph_grid);
-	Visualisation::vtkWriteGrid("vis/at_start_dem",0,dem_grid);
+	auto A_grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
+	A->copy_to_vtk_grid(A_grid);
+	Visualisation::vtkWriteGrid("vis/at_start_A",0,A_grid);
 
-
-	std::cout << "init porosity and rho...."<<std::endl;
-	sph->init_neighbour_search(min_domain,max_domain,2*params->sph_maxh,periodic);
-	dem->init_neighbour_search(min_domain,max_domain,2*params->sph_maxh,periodic);
-
-	/*
-	 * init porosity and rho
-	 */
-	//std::cout << "calculate omega"<<std::endl;
-	std::for_each(sph->begin(),sph->end(),[sph,dem,params](SphType::Value& i) {
-		REGISTER_SPH_PARTICLE(i);
-		e = 1;
-		//bool found = false;
-		for (auto tpl: i.get_neighbours(dem)) {
-			REGISTER_NEIGHBOUR_DEM_PARTICLE(tpl);
-			const double r2 = dx.squaredNorm();
-			if (r2 > 4.0*h*h) continue;
-			const double r = sqrt(r2);
-			const double q = r/h;
-			const double Wab = W(q,h);
-			e -= params->dem_vol*Wab;
-			//found = true;
-		}
-		rho = params->sph_dens/e;
-	});
-
+	A->init_neighbour_search(min,max,params->diameter,periodic);
 
 	/*
 	 * Simulate!!!!
@@ -127,14 +93,12 @@ int main(int argc, char **argv) {
 	std::cout << "starting...."<<std::endl;
 	for (int i = 0; i < nout; ++i) {
 		for (int k = 0; k < timesteps_per_out; ++k) {
-			sphdem(sph,dem,params,sph_geometry,dem_geometry);
+			timestep(A,params);
 		}
 		std::cout <<"iteration "<<i<<std::endl;
 		
-		sph->copy_to_vtk_grid(sph_grid);
-		dem->copy_to_vtk_grid(dem_grid);
-		Visualisation::vtkWriteGrid("vis/sph",i,sph_grid);
-		Visualisation::vtkWriteGrid("vis/dem",i,dem_grid);
+		A->copy_to_vtk_grid(A_grid);
+		Visualisation::vtkWriteGrid("vis/A",i,A_grid);
 	}
 	
 	
