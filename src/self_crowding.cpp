@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
 		bool regenerate;
 		do {
 			regenerate = false;
-			canditate_position << dice(),dice(),dice();
+			canditate_position << L/2,dice(),dice();
 			for (auto tpl: A->get_neighbours(canditate_position)) {
 				REGISTER_NEIGHBOUR_SPECIES_PARTICLE(tpl);
 				if (alivej) {

@@ -84,7 +84,7 @@ void langevin_timestep(ptr<SpeciesType> A,
 			}
 		}
 		v *= dt*D/(k_b*T);
-		v += sqrt(2.0*D*dt)*Vect3d(i.rand_normal(),i.rand_normal(),i.rand_normal());
+		v += sqrt(2.0*D*dt)*Vect3d(0,i.rand_normal(),i.rand_normal());
 
 		return r + v;
 	});
