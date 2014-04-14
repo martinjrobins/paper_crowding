@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
 	std::cout <<"Running simulation with parameters:"<<std::endl;
 	std::cout <<"\tD = "<<params->D<<" average step length = "<<sqrt(2.0*params->D*params->dt)<<" asl = "<<sqrt(2.0*params->D*params->dt)/L<<" L"<<std::endl;
 	std::cout <<"\tdiameter = "<<params->diameter<<std::endl;
-	std::cout <<"\tdt = "<<params->dt<<" m/gamma = "<<mass/gamma<<std::endl;
+	std::cout <<"\tdt = "<<params->dt<<" m/gamma = "<<mass/gamma<<" mean free time = "<<params->diameter/(2.0*sqrt(3.0*k_b*params->T/mass))<<std::endl;
 	std::cout <<"\tT = "<<params->T<<std::endl;
 	std::cout <<"\tk_s = "<<params->k_s<<std::endl;
 
