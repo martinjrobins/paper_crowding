@@ -33,20 +33,40 @@ int main(int argc, char **argv) {
 
 
 	const int timesteps = 20000;
-	const int nout = 100;
+	const int nout = 1000;
 	const int timesteps_per_out = timesteps/nout;
-	const double L = 1.0;
-	const int n = 10;
+	const int n = 100;
 
 	/*
 
 	/*
 	 * parameters
 	 */
-	params->D = 1.0;
-	params->diameter = 0.01;
-	params->dt = 0.0001;
+
+	const double kDa = 1.660538921e-30;
+	const double mass = 40.0*kDa; //average mol mass of protein in E.Coli
+	const double viscosity = 8.9e-4; //viscosity of water
+	params->diameter = 5e-9; //average diameter of protein in E.Coli
 	params->time = 0;
+	params->T = 300.0; //room temp
+	params->D = k_b*params->T/(3.0*PI*viscosity*params->diameter);
+	params->k_s = 1.0;
+	const double aim_step_length = params->diameter/100.0;
+	params->dt =  pow(aim_step_length,2)/(2.0*params->D);
+	const double gamma = 3.0*PI*viscosity*params->diameter/mass;
+
+
+	const double L = params->diameter*10;
+
+
+
+	std::cout <<"Running simulation with parameters:"<<std::endl;
+	std::cout <<"\tD = "<<params->D<<" average step length = "<<sqrt(2.0*params->D*params->dt)<<" asl = "<<sqrt(2.0*params->D*params->dt)/L<<" L"<<std::endl;
+	std::cout <<"\tdiameter = "<<params->diameter<<std::endl;
+	std::cout <<"\tdt = "<<params->dt<<" m/gamma = "<<mass/gamma<<std::endl;
+	std::cout <<"\tT = "<<params->T<<std::endl;
+	std::cout <<"\tk_s = "<<params->k_s<<std::endl;
+
 
 	const Vect3d min(0,0,0);
 	const Vect3d max(L,L,L);
@@ -56,9 +76,9 @@ int main(int argc, char **argv) {
 	 * create particles
 	 */
 	std::mt19937 generator;
-	std::uniform_real_distribution distribution(0,L);
+	std::uniform_real_distribution<double> distribution(0,L);
 	auto dice = std::bind ( distribution, generator );
-	A->create_particles(n,[A,&dice](SpeciesType::Value& i) {
+	A->create_particles(n,[L,A,&dice](SpeciesType::Value& i) {
 		REGISTER_SPECIES_PARTICLE(i);
 		v << 0,0,0;
 		Vect3d canditate_position;
@@ -93,7 +113,7 @@ int main(int argc, char **argv) {
 	std::cout << "starting...."<<std::endl;
 	for (int i = 0; i < nout; ++i) {
 		for (int k = 0; k < timesteps_per_out; ++k) {
-			timestep(A,params);
+			langevin_timestep(A,params);
 		}
 		std::cout <<"iteration "<<i<<std::endl;
 		
