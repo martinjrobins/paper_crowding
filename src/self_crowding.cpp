@@ -56,10 +56,10 @@ int main(int argc, char **argv) {
 	const double gamma = 3.0*PI*viscosity*params->diameter/mass;
 
 
-	const double L = params->diameter*10;
+	const double L = params->diameter*20;
 	const double rdf_min = params->diameter*0.1;
-	const double rdf_max = params->diameter*7;
-	const int rdf_n = 50;
+	const double rdf_max = params->diameter*5;
+	const int rdf_n = 40;
 
 
 	std::cout <<"Running simulation with parameters:"<<std::endl;
