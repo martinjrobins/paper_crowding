@@ -32,8 +32,8 @@ using namespace Aboria;
 
 const double k_b = 1.3806488e-23;
 
-enum {SPECIES_VELOCITY,SPECIES_POTENTIAL};
-typedef std::tuple<Vect3d,double> SpeciesTuple;
+enum {SPECIES_VELOCITY,SPECIES_POTENTIAL,SPECIES_SAVED_R};
+typedef std::tuple<Vect3d,double,Vect3d> SpeciesTuple;
 typedef Particles<SpeciesTuple> SpeciesType;
 
 #define GET_TUPLE(type,name,position,particle) type& name = std::get<position>(particle.get_data())
@@ -41,6 +41,7 @@ typedef Particles<SpeciesTuple> SpeciesType;
 				const Vect3d& r = particle.get_position(); \
 				const bool alive = particle.is_alive(); \
 				GET_TUPLE(double,U,SPECIES_POTENTIAL,particle); \
+				GET_TUPLE(Vect3d,r0,SPECIES_SAVED_R,particle); \
 				GET_TUPLE(Vect3d,v,SPECIES_VELOCITY,particle);
 #define REGISTER_NEIGHBOUR_SPECIES_PARTICLE(tuple) \
 				const Vect3d& dx = std::get<1>(tuple); \
@@ -48,6 +49,7 @@ typedef Particles<SpeciesTuple> SpeciesType;
 				const Vect3d& rj = j.get_position(); \
 				const bool alivej = j.is_alive(); \
 				const GET_TUPLE(double,Uj,SPECIES_POTENTIAL,j); \
+				const GET_TUPLE(Vect3d,r0j,SPECIES_SAVED_R,j); \
 				const GET_TUPLE(Vect3d,vj,SPECIES_VELOCITY,j);
 
 struct Params {

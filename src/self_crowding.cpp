@@ -96,6 +96,7 @@ int main(int argc, char **argv) {
 				}
 			}
 		} while (regenerate);
+		r0 = canditate_position;
 		return canditate_position;
 	});
 
@@ -115,6 +116,10 @@ int main(int argc, char **argv) {
 		rdf_r[i] = i*(rdf_max-rdf_min)/rdf_n + rdf_min;
 	}
 
+	std::ofstream f;
+	f.open("vis/msd.csv");
+	f << "#timestep,msv"<<std::endl;
+
 	/*
 	 * Simulate!!!!
 	 */
@@ -126,6 +131,20 @@ int main(int argc, char **argv) {
 		std::cout <<"iteration "<<i<<std::endl;
 		A->copy_to_vtk_grid(A_grid);
 		Visualisation::vtkWriteGrid("vis/A",i,A_grid);
+
+		if (i==10) {
+			std::for_each(A->begin(),A->end(),[](SpeciesType::Value& i) {
+				REGISTER_SPECIES_PARTICLE(i);
+				r0 = r;
+			});
+		}
+		double msv = 0;
+		for(SpeciesType::Value& i: *A) {
+			REGISTER_SPECIES_PARTICLE(i);
+			msv += (r-r0).squaredNorm();
+		}
+		msv /= A->size();
+		f << i<<","<<msv<<std::endl;
 
 		auto rdf = radial_distribution_function(A,rdf_min,rdf_max,rdf_n);
 		char buffer[100];
