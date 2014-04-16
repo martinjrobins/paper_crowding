@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
 	const int timesteps = 20000;
 	const int nout = 1000;
 	const int timesteps_per_out = timesteps/nout;
-	const int n = 100;
+	const int n = 2000;
 
 	/*
 
@@ -58,8 +58,8 @@ int main(int argc, char **argv) {
 
 	const double L = params->diameter*20;
 	const double rdf_min = params->diameter*0.1;
-	const double rdf_max = params->diameter*5;
-	const int rdf_n = 40;
+	const double rdf_max = params->diameter*9;
+	const int rdf_n = 50;
 
 
 	std::cout <<"Running simulation with parameters:"<<std::endl;
@@ -130,7 +130,7 @@ int main(int argc, char **argv) {
 		auto rdf = radial_distribution_function(A,rdf_min,rdf_max,rdf_n);
 		char buffer[100];
 		sprintf(buffer,"vis/rdf%05d.csv",i);
-		Visualisation::write_column_vectors(buffer,"#r rdf",{rdf_r,*rdf});
+		Visualisation::write_column_vectors(buffer,"#r,rdf",{rdf_r,*rdf});
 
 	}
 	

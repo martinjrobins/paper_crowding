@@ -176,7 +176,7 @@ public:
 		f << header << std::endl;
 		for (unsigned int i = 0; i < columns.begin()->size(); ++i) {
 			for (auto j: columns) {
-				f << j[i] << " ";
+				f << j[i] << ",";
 			}
 			f <<'\b'<< std::endl;
 		}
