@@ -22,8 +22,8 @@
  *      Author: robinsonm
  */
 
-#ifndef SPHDEM_H_
-#define SPHDEM_H_
+#ifndef CROWDING_H_
+#define CROWDING_H_
 
 #include "Aboria.h"
 using namespace Aboria;
@@ -84,7 +84,7 @@ void langevin_timestep(ptr<SpeciesType> A,
 			}
 		}
 		v *= dt*D/(k_b*T);
-		v += sqrt(2.0*D*dt)*Vect3d(0,i.rand_normal(),i.rand_normal());
+		v += sqrt(2.0*D*dt)*Vect3d(i.rand_normal(),i.rand_normal(),i.rand_normal());
 
 		return r + v;
 	});
@@ -127,4 +127,4 @@ void monte_carlo_timestep(ptr<SpeciesType> A,
 }
 
 
-#endif /* SPHDEM_H_ */
+#endif /* CROWDING_H_ */

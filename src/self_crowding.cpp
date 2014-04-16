@@ -57,7 +57,9 @@ int main(int argc, char **argv) {
 
 
 	const double L = params->diameter*10;
-
+	const double rdf_min = params->diameter*0.1;
+	const double rdf_max = params->diameter*7;
+	const int rdf_n = 50;
 
 
 	std::cout <<"Running simulation with parameters:"<<std::endl;
@@ -85,7 +87,7 @@ int main(int argc, char **argv) {
 		bool regenerate;
 		do {
 			regenerate = false;
-			canditate_position << L/2,dice(),dice();
+			canditate_position << dice(),dice(),dice();
 			for (auto tpl: A->get_neighbours(canditate_position)) {
 				REGISTER_NEIGHBOUR_SPECIES_PARTICLE(tpl);
 				if (alivej) {
@@ -107,6 +109,12 @@ int main(int argc, char **argv) {
 
 	A->init_neighbour_search(min,max,params->diameter,periodic);
 
+	std::vector<double> rdf_r;
+	rdf_r.resize(rdf_n);
+	for (int i = 0; i < rdf_n; ++i) {
+		rdf_r[i] = i*(rdf_max-rdf_min)/rdf_n + rdf_min;
+	}
+
 	/*
 	 * Simulate!!!!
 	 */
@@ -116,9 +124,14 @@ int main(int argc, char **argv) {
 			langevin_timestep(A,params);
 		}
 		std::cout <<"iteration "<<i<<std::endl;
-		
 		A->copy_to_vtk_grid(A_grid);
 		Visualisation::vtkWriteGrid("vis/A",i,A_grid);
+
+		auto rdf = radial_distribution_function(A,rdf_min,rdf_max,rdf_n);
+		char buffer[100];
+		sprintf(buffer,"vis/rdf%05d.csv",i);
+		Visualisation::write_column_vectors(buffer,"#r rdf",{rdf_r,*rdf});
+
 	}
 	
 	

@@ -170,6 +170,19 @@ public:
 		writer->Write();
 	}
 
+	static void write_column_vectors(std::string filename, std::string header, std::initializer_list<std::vector<double> > columns) {
+		std::ofstream f;
+		f.open (filename.c_str());
+		f << header << std::endl;
+		for (unsigned int i = 0; i < columns.begin()->size(); ++i) {
+			for (auto j: columns) {
+				f << j[i] << " ";
+			}
+			f <<'\b'<< std::endl;
+		}
+		f.close();
+	}
+
 
 private:
 	vtkSmartPointer<vtkRenderer> renderer;
