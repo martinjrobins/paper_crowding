@@ -32,10 +32,9 @@ int main(int argc, char **argv) {
 	auto params = ptr<Params>(new Params());
 
 
-	const int timesteps = 20000;
+	const int timesteps = 200000;
 	const int nout = 1000;
 	const int timesteps_per_out = timesteps/nout;
-	const int n = 2000;
 
 	/*
 
@@ -50,7 +49,7 @@ int main(int argc, char **argv) {
 	params->time = 0;
 	params->T = 300.0; //room temp
 	params->D = k_b*params->T/(3.0*PI*viscosity*params->diameter);
-	params->k_s = 1.0;
+	params->k_s = 1.0e-2;
 	const double aim_step_length = params->diameter/100.0;
 	params->dt =  pow(aim_step_length,2)/(2.0*params->D);
 	const double gamma = 3.0*PI*viscosity*params->diameter/mass;
@@ -58,11 +57,17 @@ int main(int argc, char **argv) {
 
 	const double L = params->diameter*20;
 	const double rdf_min = params->diameter*0.1;
-	const double rdf_max = params->diameter*9;
+	const double rdf_max = params->diameter*3;
 	const int rdf_n = 50;
+
+	const double vol_ratio = 0.3;
+	const double mol_vol = (1.0/6.0)*PI*pow(params->diameter,3);
+	const int n = pow(L,3)*vol_ratio/mol_vol;
+
 
 
 	std::cout <<"Running simulation with parameters:"<<std::endl;
+	std::cout <<"\tvolume ratio = "<<vol_ratio<<" n = "<<n<<std::endl;
 	std::cout <<"\tD = "<<params->D<<" average step length = "<<sqrt(2.0*params->D*params->dt)<<" asl = "<<sqrt(2.0*params->D*params->dt)/L<<" L"<<std::endl;
 	std::cout <<"\tdiameter = "<<params->diameter<<std::endl;
 	std::cout <<"\tdt = "<<params->dt<<" m/gamma = "<<mass/gamma<<" mean free time = "<<params->diameter/(2.0*sqrt(3.0*k_b*params->T/mass))<<std::endl;
@@ -80,9 +85,8 @@ int main(int argc, char **argv) {
 	std::mt19937 generator;
 	std::uniform_real_distribution<double> distribution(0,L);
 	auto dice = std::bind ( distribution, generator );
-	A->create_particles(n,[L,A,&dice](SpeciesType::Value& i) {
+	A->create_particles(n,[params,L,A,&dice](SpeciesType::Value& i) {
 		REGISTER_SPECIES_PARTICLE(i);
-		v << 0,0,0;
 		Vect3d canditate_position;
 		bool regenerate;
 		do {
@@ -90,6 +94,8 @@ int main(int argc, char **argv) {
 			canditate_position << dice(),dice(),dice();
 			for (auto tpl: A->get_neighbours(canditate_position)) {
 				REGISTER_NEIGHBOUR_SPECIES_PARTICLE(tpl);
+				const double r2 = dx.squaredNorm();
+				if (r2 > params->diameter*params->diameter) continue;
 				if (alivej) {
 					regenerate = true;
 					break;
@@ -97,6 +103,9 @@ int main(int argc, char **argv) {
 			}
 		} while (regenerate);
 		r0 = canditate_position;
+		rt = canditate_position;
+		v << 0,0,0;
+		U = 0;
 		return canditate_position;
 	});
 
@@ -136,14 +145,14 @@ int main(int argc, char **argv) {
 			std::for_each(A->begin(),A->end(),[](SpeciesType::Value& i) {
 				REGISTER_SPECIES_PARTICLE(i);
 				r0 = r;
+				rt = r;
 			});
 		}
-		double msv = 0;
-		for(SpeciesType::Value& i: *A) {
-			REGISTER_SPECIES_PARTICLE(i);
-			msv += (r-r0).squaredNorm();
-		}
-		msv /= A->size();
+		double msv = std::accumulate(A->begin(),A->end(),0.0,[](double i,SpeciesType::Value& j) {
+			const GET_TUPLE(Vect3d,rtj,SPECIES_TOTAL_R,j);
+			const GET_TUPLE(Vect3d,r0j,SPECIES_SAVED_R,j);
+			return i + (rtj-r0j).squaredNorm();
+		})/A->size();
 		f << i<<","<<msv<<std::endl;
 
 		auto rdf = radial_distribution_function(A,rdf_min,rdf_max,rdf_n);
@@ -152,6 +161,6 @@ int main(int argc, char **argv) {
 		Visualisation::write_column_vectors(buffer,"#r,rdf",{rdf_r,*rdf});
 
 	}
-	
+
 	
 }
