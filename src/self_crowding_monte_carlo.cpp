@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
 	}
 
 
-	const int timesteps = atoi(argv[2]);
+	const double timesteps = atoi(argv[2]);
 	const int nout = atoi(argv[3]);
 	const int timesteps_per_out = timesteps/nout;
 
@@ -58,6 +58,7 @@ int main(int argc, char **argv) {
 	params->k_s = atof(argv[4]);
 	const double aim_step_length = params->diameter*atof(argv[5]);
 	params->dt =  pow(aim_step_length,2)/(2.0*params->D);
+
 	const double gamma = 3.0*PI*viscosity*params->diameter/mass;
 
 
@@ -133,9 +134,6 @@ int main(int argc, char **argv) {
 		rdf_r[i] = i*(rdf_max-rdf_min)/rdf_n + rdf_min;
 	}
 
-	std::ofstream f;
-	f.open((output_dir+"/msd.csv").c_str());
-	f << "#timestep,msv"<<std::endl;
 
 	/*
 	 * Simulate!!!!
@@ -150,34 +148,12 @@ int main(int argc, char **argv) {
 		A->copy_to_vtk_grid(A_grid);
 		Visualisation::vtkWriteGrid((output_dir+"/A").c_str(),i,A_grid);
 
-		if (i==10) {
-			std::for_each(A->begin(),A->end(),[](SpeciesType::Value& i) {
-				REGISTER_SPECIES_PARTICLE(i);
-				r0 = r;
-				rt = r;
-			});
-		}
-		const double msv = std::accumulate(A->begin(),A->end(),0.0,[](double i,SpeciesType::Value& j) {
-			const GET_TUPLE(Vect3d,rtj,SPECIES_TOTAL_R,j);
-			const GET_TUPLE(Vect3d,r0j,SPECIES_SAVED_R,j);
-			return i + (rtj-r0j).squaredNorm();
-		})/A->size();
-
-
-		const double flux = std::accumulate(A->begin(),A->end(),0.0,[](unsigned int i,SpeciesType::Value& j) {
-			const GET_TUPLE(unsigned int,exits,SPECIES_NUM_EXITS,j);
-			return i + exits;
-		})/(pow(L,2)*6.0);
-
-		f << i<<","<<msv<<','<<flux<<std::endl;
-
 		auto rdf = radial_distribution_function(A,rdf_min,rdf_max,rdf_n);
 		char buffer[100];
 		sprintf(buffer,"%s/rdf%05d.csv",argv[1],i);
 		Visualisation::write_column_vectors(buffer,"#r,rdf",{rdf_r,*rdf});
 
 	}
-	f.close();
 
 	
 }

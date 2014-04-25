@@ -33,14 +33,13 @@ int main(int argc, char **argv) {
 
 
 	if (argc < 7) {
-		std::cout << "Usage: self_crowding output_dir timesteps nout k_s aim_step_length/diameter vol_ratio"<<std::endl;
+		std::cout << "Usage: self_crowding output_dir time nout k_s aim_step_length/diameter vol_ratio"<<std::endl;
 		return -1;
 	}
 
 
-	const int timesteps = atoi(argv[2]);
+	const double sim_time = atof(argv[2]);
 	const int nout = atoi(argv[3]);
-	const int timesteps_per_out = timesteps/nout;
 
 	/*
 	 * parameters
@@ -57,6 +56,8 @@ int main(int argc, char **argv) {
 	params->k_s = atof(argv[4]);
 	const double aim_step_length = params->diameter*atof(argv[5]);
 	params->dt =  pow(aim_step_length,2)/(2.0*params->D);
+	const int timesteps = sim_time/params->dt;
+	const int timesteps_per_out = timesteps/nout;
 	const double gamma = 3.0*PI*viscosity*params->diameter/mass;
 
 
@@ -111,6 +112,7 @@ int main(int argc, char **argv) {
 		rt = canditate_position;
 		v << 0,0,0;
 		U = 0;
+		exits = 0;
 		return canditate_position;
 	});
 
@@ -133,7 +135,7 @@ int main(int argc, char **argv) {
 
 	std::ofstream f;
 	f.open((output_dir+"/msd.csv").c_str());
-	f << "#timestep,msv"<<std::endl;
+	f << "#timestep,time,msd,flux"<<std::endl;
 
 	/*
 	 * Simulate!!!!
@@ -165,7 +167,7 @@ int main(int argc, char **argv) {
 			return i + exits;
 		})/(pow(L,2)*6.0);
 
-		f << i<<","<<msv<<','<<flux<<std::endl;
+		f << i<<","<<(i+1)*timesteps_per_out*params->dt<<","<<msv<<','<<flux<<std::endl;
 
 		auto rdf = radial_distribution_function(A,rdf_min,rdf_max,rdf_n);
 		char buffer[100];
