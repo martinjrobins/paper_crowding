@@ -191,7 +191,7 @@ void monte_carlo_timestep(ptr<SpeciesType> A,
 			}
 		}
 
-		const double acceptance_ratio = exp(Udiff/(k_b*T));
+		const double acceptance_ratio = exp(-Udiff/(k_b*T));
 		//std::cout <<"dU = "<<newU-oldU<<" acceptance_ratio = "<<acceptance_ratio<<std::endl;
 		if (uniformd(generator)<acceptance_ratio) {
 			//std::cout <<"accepted"<<std::endl;
