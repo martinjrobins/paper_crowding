@@ -32,8 +32,8 @@ using namespace Aboria;
 
 const double k_b = 1.3806488e-23;
 
-enum {SPECIES_VELOCITY,SPECIES_POTENTIAL,SPECIES_TOTAL_R,SPECIES_SAVED_R,SPECIES_SAVED_R1};
-typedef std::tuple<Vect3d,double,Vect3d,Vect3d,Vect3d> SpeciesTuple;
+enum {SPECIES_VELOCITY,SPECIES_POTENTIAL,SPECIES_TOTAL_R,SPECIES_SAVED_R,SPECIES_SAVED_R1,SPECIES_NUM_EXITS};
+typedef std::tuple<Vect3d,double,Vect3d,Vect3d,Vect3d,unsigned int> SpeciesTuple;
 typedef Particles<SpeciesTuple> SpeciesType;
 
 #define GET_TUPLE(type,name,position,particle) type& name = std::get<position>(particle.get_data())
@@ -41,6 +41,7 @@ typedef Particles<SpeciesTuple> SpeciesType;
 				const Vect3d& r = particle.get_position(); \
 				const bool alive = particle.is_alive(); \
 				GET_TUPLE(double,U,SPECIES_POTENTIAL,particle); \
+				GET_TUPLE(unsigned int,exits,SPECIES_NUM_EXITS,particle); \
 				GET_TUPLE(Vect3d,r0,SPECIES_SAVED_R,particle); \
 				GET_TUPLE(Vect3d,rt,SPECIES_TOTAL_R,particle); \
 				GET_TUPLE(Vect3d,r1,SPECIES_SAVED_R1,particle); \
@@ -51,8 +52,6 @@ typedef Particles<SpeciesTuple> SpeciesType;
 				const Vect3d& rj = j.get_position(); \
 				const bool alivej = j.is_alive(); \
 				const GET_TUPLE(double,Uj,SPECIES_POTENTIAL,j); \
-				const GET_TUPLE(Vect3d,r0j,SPECIES_SAVED_R,j); \
-				const GET_TUPLE(Vect3d,rtj,SPECIES_TOTAL_R,j); \
 				const GET_TUPLE(Vect3d,vj,SPECIES_VELOCITY,j);
 
 struct Params {
@@ -91,7 +90,12 @@ void langevin_timestep(ptr<SpeciesType> A,
 		v *= dt*D/(k_b*T);
 		v += sqrt(2.0*D*dt)*Vect3d(i.rand_normal(),i.rand_normal(),i.rand_normal());
 		rt += v;
-		return r + v;
+		const Vect3d new_position = r+v;
+		if ((new_position.array() < A->get_low().array()).any() ||
+				(new_position.array() >= A->get_high().array()).any()) {
+			exits++;
+		}
+		return new_position;
 	});
 
 }

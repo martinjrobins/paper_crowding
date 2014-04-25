@@ -32,11 +32,15 @@ int main(int argc, char **argv) {
 	auto params = ptr<Params>(new Params());
 
 
-	const int timesteps = 200000;
-	const int nout = 1000;
-	const int timesteps_per_out = timesteps/nout;
+	if (argc < 7) {
+		std::cout << "Usage: self_crowding output_dir timesteps nout k_s aim_step_length/diameter vol_ratio"<<std::endl;
+		return -1;
+	}
 
-	/*
+
+	const int timesteps = atoi(argv[2]);
+	const int nout = atoi(argv[3]);
+	const int timesteps_per_out = timesteps/nout;
 
 	/*
 	 * parameters
@@ -49,8 +53,9 @@ int main(int argc, char **argv) {
 	params->time = 0;
 	params->T = 300.0; //room temp
 	params->D = k_b*params->T/(3.0*PI*viscosity*params->diameter);
-	params->k_s = 1.0e-2;
-	const double aim_step_length = params->diameter/100.0;
+	//params->k_s = 1.0e-2;
+	params->k_s = atof(argv[4]);
+	const double aim_step_length = params->diameter*atof(argv[5]);
 	params->dt =  pow(aim_step_length,2)/(2.0*params->D);
 	const double gamma = 3.0*PI*viscosity*params->diameter/mass;
 
@@ -58,9 +63,9 @@ int main(int argc, char **argv) {
 	const double L = params->diameter*20;
 	const double rdf_min = params->diameter*0.1;
 	const double rdf_max = params->diameter*3;
-	const int rdf_n = 50;
+	const int rdf_n = 100;
 
-	const double vol_ratio = 0.3;
+	const double vol_ratio = atof(argv[6]);
 	const double mol_vol = (1.0/6.0)*PI*pow(params->diameter,3);
 	const int n = pow(L,3)*vol_ratio/mol_vol;
 
@@ -115,7 +120,8 @@ int main(int argc, char **argv) {
 	 */
 	auto A_grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
 	A->copy_to_vtk_grid(A_grid);
-	Visualisation::vtkWriteGrid("vis/at_start_A",0,A_grid);
+	std::string output_dir(argv[1]);
+	Visualisation::vtkWriteGrid((output_dir+"/at_start_A").c_str(),0,A_grid);
 
 	A->init_neighbour_search(min,max,params->diameter,periodic);
 
@@ -126,7 +132,7 @@ int main(int argc, char **argv) {
 	}
 
 	std::ofstream f;
-	f.open("vis/msd.csv");
+	f.open((output_dir+"/msd.csv").c_str());
 	f << "#timestep,msv"<<std::endl;
 
 	/*
@@ -139,13 +145,13 @@ int main(int argc, char **argv) {
 		}
 		std::cout <<"iteration "<<i<<std::endl;
 		A->copy_to_vtk_grid(A_grid);
-		Visualisation::vtkWriteGrid("vis/A",i,A_grid);
-
+		Visualisation::vtkWriteGrid((output_dir+"/A").c_str(),i,A_grid);
 		if (i==10) {
 			std::for_each(A->begin(),A->end(),[](SpeciesType::Value& i) {
 				REGISTER_SPECIES_PARTICLE(i);
 				r0 = r;
 				rt = r;
+				exits = 0;
 			});
 		}
 		double msv = std::accumulate(A->begin(),A->end(),0.0,[](double i,SpeciesType::Value& j) {
@@ -153,14 +159,21 @@ int main(int argc, char **argv) {
 			const GET_TUPLE(Vect3d,r0j,SPECIES_SAVED_R,j);
 			return i + (rtj-r0j).squaredNorm();
 		})/A->size();
-		f << i<<","<<msv<<std::endl;
+
+		const double flux = std::accumulate(A->begin(),A->end(),0.0,[](unsigned int i,SpeciesType::Value& j) {
+			const GET_TUPLE(unsigned int,exits,SPECIES_NUM_EXITS,j);
+			return i + exits;
+		})/(pow(L,2)*6.0);
+
+		f << i<<","<<msv<<','<<flux<<std::endl;
 
 		auto rdf = radial_distribution_function(A,rdf_min,rdf_max,rdf_n);
 		char buffer[100];
-		sprintf(buffer,"vis/rdf%05d.csv",i);
+		sprintf(buffer,"%s/rdf%05d.csv",argv[1],i);
 		Visualisation::write_column_vectors(buffer,"#r,rdf",{rdf_r,*rdf});
 
 	}
+	f.close();
 
 	
 }
