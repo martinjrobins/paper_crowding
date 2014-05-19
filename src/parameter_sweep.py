@@ -7,6 +7,10 @@ import threading
 from math import pi
 import numpy
 import csv
+import matplotlib
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import mayavi.mlab as mlab
 
 
 k_b = 1.3806488e-23
@@ -78,18 +82,51 @@ def reduce_sweep():
     print "vol_ratio = ",vol_ratio_sweep
 
     params = []
-    for k_s in k_s_sweep:
-        for sl_div_diam in sl_div_diam_sweep:
-            for vol_ratio in vol_ratio_sweep:
-                params.append((k_s,sl_div_diam,vol_ratio))
-    
-    with open(data_dir + "/" + 'D.csv', 'wb') as csvfile:
+    Dmsd = numpy.zeros((10,20,10))
+    with open(data_dir + "/D_row.csv", 'wb') as csvfile:
         writer = csv.writer(csvfile, delimiter=',', quotechar='#')
-        for (k_s,sl_div_diam,vol_ratio) in params:
-            Dmsd = reduce(k_s,sl_div_diam,vol_ratio)
-            writer.writerow((k_s,sl_div_diam,vol_ratio,Dmsd))
+        for k_s,i in zip(k_s_sweep,range(10)):
+            for sl_div_diam,j in zip(sl_div_diam_sweep,range(20)):
+                for vol_ratio,k in zip(vol_ratio_sweep,range(10)):
+                    Dmsd[i,j,k] = reduce(k_s,sl_div_diam,vol_ratio)
+                    writer.writerow((k_s,sl_div_diam,vol_ratio,Dmsd[i,j,k]))
+    
+    numpy.save(data_dir + "/D_numpy.npy", Dmsd)
+
+def plots():
+    k_s_sweep = [10**(x-5) for x in range(10)]
+    sl_div_diam_sweep = [5.0*(x+1)/1000 for x in range(20)]
+    vol_ratio_sweep = [5.0*(x+1)/100 for x in range(10)]    
+    
+    Dmsd = numpy.load(data_dir + "/D_numpy.npy")
+    kDa = 1.660538921e-30;
+    mass = 40.0*kDa; 
+    viscosity = 8.9e-4; 
+    diameter = 5e-9; 
+    T = 300.0; 
+    Dbase = k_b*T/(3.0*numpy.pi*viscosity*diameter);
+    Dmsd = Dmsd/Dbase
+    
+    mlab.figure(1, size=(800, 800), fgcolor=(1, 1, 1),
+                                    bgcolor=(0.5, 0.5, 0.5))
+    mlab.clf()
+    contours = numpy.arange(0.01,2,0.2).tolist()
+    obj = mlab.contour3d(Dmsd,contours=contours,transparent=True,vmin=contours[0],vmax=contours[-1])
+    outline = mlab.outline(color=(.7, .7, .7),extent=(0,10,0,20,0,10))
+    axes = mlab.axes(outline, color=(.7, .7, .7),
+            nb_labels = 5,
+            ranges=(k_s_sweep[0], k_s_sweep[-1], sl_div_diam_sweep[0], sl_div_diam_sweep[-1], vol_ratio_sweep[0], vol_ratio_sweep[-1]), 
+            xlabel='spring stiffness', 
+            ylabel='step length',
+            zlabel='volume ratio')
+    mlab.colorbar(obj,title='D',nb_labels=5)
+
+    mlab.show()
+    
+
     
         
 
 if __name__ == '__main__':
-    reduce_sweep()
+    #reduce_sweep()
+    plots()
