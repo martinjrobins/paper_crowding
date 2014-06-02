@@ -32,8 +32,8 @@ int main(int argc, char **argv) {
 	auto params = ptr<Params>(new Params());
 
 
-	if (argc < 7) {
-		std::cout << "Usage: self_crowding output_dir time nout k_s aim_step_length/diameter vol_ratio"<<std::endl;
+	if (argc < 8) {
+		std::cout << "Usage: self_crowding output_dir time nout k_s aim_step_length/diameter vol_ratio method"<<std::endl;
 		return -1;
 	}
 
@@ -137,13 +137,32 @@ int main(int argc, char **argv) {
 	f.open((output_dir+"/msd.csv").c_str());
 	f << "#timestep,time,msd,flux"<<std::endl;
 
+	enum method{LANGEVIN,MONTE_CARLO,HARD_SPHERE};
+	enum method the_method = LANGEVIN;
+	if (strcmp(argv[7],"langevin")==0) the_method=LANGEVIN;
+	if (strcmp(argv[7],"monte_carlo")==0) the_method=MONTE_CARLO;
+	if (strcmp(argv[7],"hard_sphere")==0) the_method=HARD_SPHERE;
+	std::cout << the_method<<std::endl;
+
 	/*
 	 * Simulate!!!!
 	 */
 	std::cout << "starting...."<<std::endl;
 	for (int i = 0; i < nout; ++i) {
 		for (int k = 0; k < timesteps_per_out; ++k) {
-			langevin_timestep(A,params);
+			switch (the_method) {
+			case LANGEVIN:
+				langevin_timestep(A,params);
+				break;
+			case MONTE_CARLO:
+				monte_carlo_timestep(A,params,generator);
+				break;
+			case HARD_SPHERE:
+				hard_sphere_timestep(A,params);
+				break;
+			default:
+				break;
+			}
 		}
 		std::cout <<"iteration "<<i<<std::endl;
 		A->copy_to_vtk_grid(A_grid);

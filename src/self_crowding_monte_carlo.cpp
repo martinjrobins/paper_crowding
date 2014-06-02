@@ -134,6 +134,9 @@ int main(int argc, char **argv) {
 		rdf_r[i] = i*(rdf_max-rdf_min)/rdf_n + rdf_min;
 	}
 
+	std::ofstream f;
+	f.open((output_dir+"/msd.csv").c_str());
+	f << "#timestep,time,msd,flux"<<std::endl;
 
 	/*
 	 * Simulate!!!!
@@ -147,6 +150,27 @@ int main(int argc, char **argv) {
 		std::cout <<"iteration "<<i<<std::endl;
 		A->copy_to_vtk_grid(A_grid);
 		Visualisation::vtkWriteGrid((output_dir+"/A").c_str(),i,A_grid);
+
+		if (i==10) {
+			std::for_each(A->begin(),A->end(),[](SpeciesType::Value& i) {
+				REGISTER_SPECIES_PARTICLE(i);
+				r0 = r;
+				rt = r;
+				exits = 0;
+			});
+		}
+		double msv = std::accumulate(A->begin(),A->end(),0.0,[](double i,SpeciesType::Value& j) {
+			const GET_TUPLE(Vect3d,rtj,SPECIES_TOTAL_R,j);
+			const GET_TUPLE(Vect3d,r0j,SPECIES_SAVED_R,j);
+			return i + (rtj-r0j).squaredNorm();
+		})/A->size();
+
+		const double flux = std::accumulate(A->begin(),A->end(),0.0,[](unsigned int i,SpeciesType::Value& j) {
+			const GET_TUPLE(unsigned int,exits,SPECIES_NUM_EXITS,j);
+			return i + exits;
+		})/(pow(L,2)*6.0);
+
+		f << i<<","<<(i+1)*timesteps_per_out*params->dt<<","<<msv<<','<<flux<<std::endl;
 
 		auto rdf = radial_distribution_function(A,rdf_min,rdf_max,rdf_n);
 		char buffer[100];

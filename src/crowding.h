@@ -146,6 +146,8 @@ void monte_carlo_timestep(ptr<SpeciesType> A,
 	const double T = params->T;
 	const double k_s = params->k_s;
 
+	std::cout <<"monte carlo"<<std::endl;
+
 	std::uniform_real_distribution<double> uniformd(0,1);
 	std::normal_distribution<double> normald(0,1);
 	const Vect3d low = A->get_low();
@@ -158,7 +160,8 @@ void monte_carlo_timestep(ptr<SpeciesType> A,
 		 */
 		const int index = uniformd(generator)*A->size();
 		REGISTER_SPECIES_PARTICLE(((*A)[index]));
-		Vect3d canditate_pos = r+sqrt(2.0*D*dt)*Vect3d(normald(generator),normald(generator),normald(generator));
+		const Vect3d rand_inc = sqrt(2.0*D*dt)*Vect3d(normald(generator),normald(generator),normald(generator));
+		Vect3d canditate_pos = r+rand_inc;
 		for (int d = 0; d < 3; ++d) {
 			while (canditate_pos[d]<low[d]) {
 				canditate_pos[d] += (high[d]-low[d]);
@@ -196,13 +199,68 @@ void monte_carlo_timestep(ptr<SpeciesType> A,
 		if (uniformd(generator)<acceptance_ratio) {
 			//std::cout <<"accepted"<<std::endl;
 
-			A->update_positions(A->begin()+index,A->begin()+index+1,[canditate_pos](SpeciesType::Value& i) {
+			A->update_positions_sequential(A->begin()+index,A->begin()+index+1,[A,&canditate_pos,&rand_inc](SpeciesType::Value& i) {
+				REGISTER_SPECIES_PARTICLE(i);
+				rt += rand_inc;
+				const Vect3d non_periodic_position = r+rand_inc;
+				if ((non_periodic_position.array() < A->get_low().array()).any() ||
+						(non_periodic_position.array() >= A->get_high().array()).any()) {
+					exits++;
+				}
 				return canditate_pos;
 			});
 			break;
 		}
 	}
 	}
+}
+
+void hard_sphere_timestep(ptr<SpeciesType> A,
+		ptr<Params> params) {
+
+	const double dt = params->dt;
+	const double diameter = params->diameter;
+	const double D = params->D;
+	const double T = params->T;
+
+	std::cout <<"hard sphere"<<std::endl;
+
+	int index;
+	A->update_positions_sequential(A->begin(),A->end(),[A,dt,diameter,D,T](SpeciesType::Value& i) {
+		REGISTER_SPECIES_PARTICLE(i);
+		bool valid_pos = false;
+		Vect3d canditate_pos,rand_inc;
+		while (!valid_pos) {
+			rand_inc = sqrt(2.0*D*dt)*Vect3d(i.rand_normal(),i.rand_normal(),i.rand_normal());
+			canditate_pos = r + rand_inc;
+			for (int d = 0; d < 3; ++d) {
+				while (canditate_pos[d]<A->get_low()[d]) {
+					canditate_pos[d] += (A->get_high()[d]-A->get_low()[d]);
+				}
+				while (canditate_pos[d]>=A->get_high()[d]) {
+					canditate_pos[d] -= (A->get_high()[d]-A->get_low()[d]);
+				}
+			}
+			valid_pos = true;
+			for (auto tpl: A->get_neighbours(canditate_pos)) {
+				REGISTER_NEIGHBOUR_SPECIES_PARTICLE(tpl);
+				const double r2 = dx.squaredNorm();
+				if (j.get_id()==i.get_id()) continue;
+				if (r2 > diameter*diameter) {
+					valid_pos = false;
+					break;
+				}
+			}
+		}
+
+		rt += rand_inc;
+		const Vect3d non_periodic_position = r+rand_inc;
+		if ((non_periodic_position.array() < A->get_low().array()).any() ||
+				(non_periodic_position.array() >= A->get_high().array()).any()) {
+			exits++;
+		}
+		return canditate_pos;
+	});
 }
 
 

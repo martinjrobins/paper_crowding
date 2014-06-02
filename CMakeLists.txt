@@ -9,6 +9,3 @@ include_directories(${VTK_INCLUDE_DIRS} ${Boost_INCLUDE_DIR} src Aboria/src Abor
 
 add_executable (self_crowding src/self_crowding.cpp)
 TARGET_LINK_LIBRARIES(self_crowding ${VTK_LIBRARIES})
-
-add_executable (self_crowding_monte_carlo src/self_crowding_monte_carlo.cpp)
-TARGET_LINK_LIBRARIES(self_crowding_monte_carlo ${VTK_LIBRARIES})

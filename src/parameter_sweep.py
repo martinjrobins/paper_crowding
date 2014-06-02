@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import mayavi.mlab as mlab
 
-
 k_b = 1.3806488e-23
 diameter = 5e-9
 T = 300.0
@@ -56,6 +55,15 @@ def run_sweep():
             thread.start()
         for thread in threads:
             thread.join()
+            
+def calc_average_rdf(k_s, sl_div_diam, vol_ratio):
+    subdir = str(k_s)+"_"+str(sl_div_diam)+"_"+str(vol_ratio)
+    dir = data_dir + "/" + subdir
+    print "reducing dir ",dir
+    data = numpy.zeros((100,2,400))
+    for i in range(100,500):
+        data[:,:,i-100] = numpy.loadtxt(dir+ "/rdf%05d.csv"%i, delimiter=',', usecols = (0,1))        
+    return numpy.average(data, 2)
 
 def reduce(k_s, sl_div_diam, vol_ratio):
     subdir = str(k_s)+"_"+str(sl_div_diam)+"_"+str(vol_ratio)
@@ -69,6 +77,10 @@ def reduce(k_s, sl_div_diam, vol_ratio):
     A = numpy.array([t,numpy.ones(len(t))])
     msd_fit = numpy.linalg.lstsq(A.T, msd)[0]
     #flux_fit = numpy.linalg.lstsq(A.T, flux)[0]
+    rdf = numpy.zeros((100,2,400))
+    for i in range(100,500):
+        rdf[:,:,i-100] = numpy.loadtxt(dir+ "/rdf%05d.csv"%i, delimiter=',', usecols = (0,1))        
+    numpy.savetxt(dir+ "/rdf_average.csv", numpy.average(rdf,2), delimiter=',')
     return msd_fit[0]/6.0
 
     
@@ -93,7 +105,7 @@ def reduce_sweep():
     
     numpy.save(data_dir + "/D_numpy.npy", Dmsd)
 
-def plots():
+def showDsweep():
     k_s_sweep = [10**(x-5) for x in range(10)]
     sl_div_diam_sweep = [5.0*(x+1)/1000 for x in range(20)]
     vol_ratio_sweep = [5.0*(x+1)/100 for x in range(10)]    
@@ -124,8 +136,26 @@ def plots():
     mlab.show()
     
 
-    
         
+def plots():
+    k_s_sweep = [10**(x-5) for x in range(10)]
+    sl_div_diam_sweep = [5.0*(x+1)/1000 for x in range(20)]
+    sl_div_diam_sweep.reverse()
+    vol_ratio = 0.3
+    plt.figure(figsize=(6,4.5))
+
+    for k_s,i in zip(k_s_sweep,range(10)):
+        plt.clf()
+        for sl_div_diam,j in zip(sl_div_diam_sweep,range(20)):
+            subdir = str(k_s)+"_"+str(sl_div_diam)+"_"+str(vol_ratio)
+            dir = data_dir + "/" + subdir
+            rdf = numpy.loadtxt(dir+ "/rdf_average.csv", delimiter=',', usecols = (0,1))
+            plt.plot(rdf[:,0],rdf[:,1],label="step = %f"%(sl_div_diam),color=(1-j/20.0, 1-j/20.0, 1.0))
+        plt.xlabel('$r$')
+        plt.ylabel('RDF')
+        print "saving file /rdf_%f.pdf"%(k_s)
+        plt.savefig(data_dir + "/rdf_%f.pdf"%(k_s))
+    
 
 if __name__ == '__main__':
     #reduce_sweep()
